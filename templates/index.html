@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タイピングゲーム</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans JP', 'Segoe UI', sans-serif; background: #0f0f1a; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 24px; }
+
+    h1 { color: #e0e0ff; font-size: 1.8rem; text-align: center; }
+
+    .card { background: #1a1a2e; border-radius: 20px; padding: 36px; width: 100%; max-width: 760px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+    /* 名前入力 */
+    .name-row { display: flex; gap: 10px; margin-bottom: 24px; align-items: center; }
+    .name-row label { color: #aaa; font-size: 0.9rem; white-space: nowrap; }
+    .name-row input { flex: 1; padding: 10px 14px; background: #0f0f1a; border: 1px solid #333; border-radius: 8px; color: #e0e0ff; font-size: 1rem; }
+    .name-row input:focus { outline: none; border-color: #7c6af7; }
+
+    /* ステータス */
+    .status-bar { display: flex; gap: 32px; justify-content: center; margin-bottom: 24px; }
+    .stat .val { font-size: 2.2rem; font-weight: bold; color: #7c6af7; text-align: center; }
+    .stat .lbl { font-size: 0.75rem; color: #888; text-align: center; margin-top: 2px; }
+
+    /* テキスト表示 */
+    .text-display { background: #0f0f1a; border-radius: 12px; padding: 24px; font-size: 1.25rem; line-height: 2.2; letter-spacing: 0.06em; margin-bottom: 20px; min-height: 90px; word-break: break-all; }
+    .char-done    { color: #4caf50; }
+    .char-current { color: #fff; background: #7c6af7; border-radius: 3px; }
+    .char-pending { color: #b0b0cc; }
+    .waiting      { color: #555; font-size: 1rem; }
+
+    /* 入力欄 */
+    #typingInput { width: 100%; padding: 14px 18px; background: #0f0f1a; border: 2px solid #333; border-radius: 12px; color: #e0e0ff; font-size: 1.1rem; outline: none; transition: border-color 0.2s; }
+    #typingInput:focus { border-color: #7c6af7; }
+    #typingInput.error { border-color: #ff4444; background: #1a0f0f; animation: shake 0.15s; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+    /* ボタン */
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
+    .btn { padding: 12px 32px; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
+    .btn-primary   { background: linear-gradient(135deg, #7c6af7, #5c4de0); color: white; }
+    .btn-secondary { background: #2a2a3e; color: #aaa; }
+    .btn:hover { opacity: 0.85; }
+
+    /* 結果オーバーレイ */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 10; align-items: center; justify-content: center; }
+    .overlay.active { display: flex; }
+    .result-card { background: #1a1a2e; border-radius: 20px; padding: 40px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+    .result-card h2 { color: #e0e0ff; font-size: 1.5rem; margin-bottom: 16px; }
+    .result-score { font-size: 4rem; font-weight: bold; color: #7c6af7; line-height: 1; }
+    .result-unit  { color: #888; font-size: 0.9rem; margin-bottom: 6px; }
+    .result-sub   { color: #aaa; font-size: 1rem; margin-bottom: 28px; }
+    .result-card .btn-row { margin-top: 0; }
+
+    /* ランキング */
+    .ranking-card { background: #1a1a2e; border-radius: 20px; padding: 28px 36px; width: 100%; max-width: 760px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .ranking-card h2 { color: #e0e0ff; font-size: 1.2rem; margin-bottom: 18px; text-align: center; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { color: #666; font-size: 0.78rem; padding: 8px 12px; text-align: left; border-bottom: 1px solid #2a2a3e; }
+    tbody td { color: #ccc; padding: 12px 12px; font-size: 0.95rem; border-bottom: 1px solid #1e1e2e; }
+    .rank-medal { font-size: 1.1rem; }
+    .score-val { color: #7c6af7; font-weight: bold; }
+    .empty-rank { text-align: center; color: #444; padding: 20px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<h1>⌨️ タイピングゲーム</h1>
+
+<div class="card">
+  <!-- 名前入力 -->
+  <div class="name-row">
+    <label>プレイヤー名：</label>
+    <input type="text" id="nameInput" placeholder="名前を入力してください" maxlength="20">
+  </div>
+
+  <!-- ステータス -->
+  <div class="status-bar">
+    <div class="stat"><div class="val" id="scoreVal">0</div><div class="lbl">スコア（文字数）</div></div>
+    <div class="stat"><div class="val" id="timerVal">0.0</div><div class="lbl">経過時間（秒）</div></div>
+  </div>
+
+  <!-- テキスト表示 -->
+  <div class="text-display" id="textDisplay">
+    <span class="waiting">名前を入力して「スタート」を押してください</span>
+  </div>
+
+  <input type="text" id="typingInput" placeholder="ここに入力..." disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="startBtn" onclick="startGame()">スタート</button>
+  </div>
+</div>
+
+<!-- ランキング -->
+<div class="ranking-card">
+  <h2>🏆 ランキング TOP5</h2>
+  <table>
+    <thead><tr><th>順位</th><th>名前</th><th>スコア</th><th>時間</th><th>日時</th></tr></thead>
+    <tbody id="rankingBody"><tr><td colspan="5" class="empty-rank">読み込み中...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 結果モーダル -->
+<div class="overlay" id="resultOverlay">
+  <div class="result-card">
+    <h2 id="resultTitle">ゲームオーバー</h2>
+    <div class="result-unit">スコア（正確に入力した文字数）</div>
+    <div class="result-score" id="resultScore">0</div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="closeResult(); startGame()">もう一度</button>
+      <button class="btn btn-secondary" onclick="closeResult()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let targetText = '';
+  let currentIndex = 0;
+  let startTime = null;
+  let timerInterval = null;
+  let gameActive = false;
+
+  const textDisplay  = document.getElementById('textDisplay');
+  const typingInput  = document.getElementById('typingInput');
+  const scoreVal     = document.getElementById('scoreVal');
+  const timerVal     = document.getElementById('timerVal');
+  const startBtn     = document.getElementById('startBtn');
+  const nameInput    = document.getElementById('nameInput');
+
+  // ---- ランキング読み込み ----
+  async function loadRanking() {
+    const res = await fetch('/api/ranking');
+    const data = await res.json();
+    const medals = ['🥇','🥈','🥉','4','5'];
+    const tbody = document.getElementById('rankingBody');
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-rank">まだ記録がありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map((s, i) => `
+      <tr>
+        <td><span class="rank-medal">${medals[i]}</span></td>
+        <td>${escHtml(s.username)}</td>
+        <td><span class="score-val">${s.score}</span> 文字</td>
+        <td>${s.elapsed.toFixed(1)} 秒</td>
+        <td>${s.created_at}</td>
+      </tr>
+    `).join('');
+  }
+
+  loadRanking();
+
+  // ---- ゲーム開始 ----
+  async function startGame() {
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      nameInput.style.borderColor = '#ff4444';
+      setTimeout(() => nameInput.style.borderColor = '', 1000);
+      return;
+    }
+
+    const res = await fetch('/api/text');
+    const data = await res.json();
+    targetText = data.text;
+    currentIndex = 0;
+    startTime = null;
+    gameActive = true;
+
+    scoreVal.textContent = '0';
+    timerVal.textContent = '0.0';
+    clearInterval(timerInterval);
+
+    renderText();
+    typingInput.value = '';
+    typingInput.disabled = false;
+    typingInput.classList.remove('error');
+    typingInput.focus();
+    startBtn.textContent = 'リセット';
+  }
+
+  // ---- 文字入力処理 ----
+  let isComposing = false;
+
+  // IME変換中フラグ
+  typingInput.addEventListener('compositionstart', () => { isComposing = true; });
+  typingInput.addEventListener('compositionend', (e) => {
+    isComposing = false;
+    // 確定した文字列を1文字ずつ判定
+    const composed = e.data || '';
+    for (const ch of composed) {
+      if (!gameActive) break;
+      judgeChar(ch);
+    }
+    typingInput.value = '';
+  });
+
+  typingInput.addEventListener('input', () => {
+    if (!gameActive || isComposing) return;
+    const val = typingInput.value;
+    if (!val.length) return;
+
+    const typed = val[val.length - 1];
+    typingInput.value = '';
+    judgeChar(typed);
+  });
+
+  function judgeChar(typed) {
+    // タイマー開始（初回入力時）
+    if (!startTime) {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        timerVal.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+      }, 100);
+    }
+
+    if (typed === targetText[currentIndex]) {
+      typingInput.classList.remove('error');
+      currentIndex++;
+      scoreVal.textContent = currentIndex;
+      renderText();
+      if (currentIndex >= targetText.length) endGame(true);
+    } else {
+      typingInput.classList.add('error');
+      setTimeout(() => endGame(false), 250);
+    }
+  }
+
+  // ---- ゲーム終了 ----
+  async function endGame(cleared) {
+    gameActive = false;
+    clearInterval(timerInterval);
+    typingInput.disabled = true;
+
+    const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+    const score = currentIndex;
+    const username = nameInput.value.trim() || '名無し';
+
+    await fetch('/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, score, elapsed })
+    });
+
+    document.getElementById('resultTitle').textContent = cleared ? '🎉 クリア！' : '💥 ミス！';
+    document.getElementById('resultScore').textContent = score;
+    document.getElementById('resultSub').textContent = cleared
+      ? `全文入力完了！ ${elapsed.toFixed(1)}秒`
+      : `${elapsed.toFixed(1)}秒経過`;
+    document.getElementById('resultOverlay').classList.add('active');
+
+    startBtn.textContent = 'スタート';
+    loadRanking();
+  }
+
+  function closeResult() {
+    document.getElementById('resultOverlay').classList.remove('active');
+  }
+
+  // ---- テキスト描画 ----
+  function renderText() {
+    let html = '';
+    for (let i = 0; i < targetText.length; i++) {
+      const ch = escHtml(targetText[i]);
+      if (i < currentIndex)      html += `<span class="char-done">${ch}</span>`;
+      else if (i === currentIndex) html += `<span class="char-current">${ch}</span>`;
+      else                        html += `<span class="char-pending">${ch}</span>`;
+    }
+    textDisplay.innerHTML = html;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
