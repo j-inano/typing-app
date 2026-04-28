@@ -154,27 +154,37 @@
 
   let isComposing = false;
 
-  typingInput.addEventListener('compositionstart', () => { isComposing = true; });
+  typingInput.addEventListener('compositionstart', () => {
+    isComposing = true;
+  });
+
   typingInput.addEventListener('compositionend', (e) => {
     isComposing = false;
+    typingInput.value = '';
+    if (!gameActive) return;
     const composed = e.data || '';
     for (const ch of composed) {
       if (!gameActive) break;
       judgeChar(ch);
     }
-    typingInput.value = '';
   });
 
-  typingInput.addEventListener('input', () => {
-    if (!gameActive || isComposing) return;
+  typingInput.addEventListener('input', (e) => {
+    if (!gameActive || isComposing) {
+      typingInput.value = '';
+      return;
+    }
     const val = typingInput.value;
-    if (!val.length) return;
-    const typed = val[val.length - 1];
     typingInput.value = '';
-    judgeChar(typed);
+    if (!val) return;
+    for (const ch of val) {
+      if (!gameActive) break;
+      judgeChar(ch);
+    }
   });
 
   function judgeChar(typed) {
+    if (!gameActive) return;
     if (!startTime) {
       startTime = Date.now();
       timerInterval = setInterval(() => {
@@ -194,6 +204,7 @@
   }
 
   async function endGame(cleared) {
+    if (!gameActive) return;  // 二重呼び出し防止
     gameActive = false;
     clearInterval(timerInterval);
     typingInput.disabled = true;
