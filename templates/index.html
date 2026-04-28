@@ -160,9 +160,9 @@
 
   typingInput.addEventListener('compositionend', (e) => {
     isComposing = false;
-    typingInput.value = '';
-    if (!gameActive) return;
+    if (!gameActive) { typingInput.value = ''; return; }
     const composed = e.data || '';
+    typingInput.value = '';
     for (const ch of composed) {
       if (!gameActive) break;
       judgeChar(ch);
@@ -170,14 +170,11 @@
   });
 
   typingInput.addEventListener('input', (e) => {
-    if (!gameActive) {
-      typingInput.value = '';
-      return;
-    }
-    if (isComposing) return;  // 変換中は何もしない
+    if (isComposing || e.isComposing) return; // IME変換中・直後は無視
+    if (!gameActive) { typingInput.value = ''; return; }
     const val = typingInput.value;
-    typingInput.value = '';
     if (!val) return;
+    typingInput.value = '';
     for (const ch of val) {
       if (!gameActive) break;
       judgeChar(ch);
