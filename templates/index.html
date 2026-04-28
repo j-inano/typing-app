@@ -170,10 +170,11 @@
   });
 
   typingInput.addEventListener('input', (e) => {
-    if (!gameActive || isComposing) {
+    if (!gameActive) {
       typingInput.value = '';
       return;
     }
+    if (isComposing) return;  // 変換中は何もしない
     const val = typingInput.value;
     typingInput.value = '';
     if (!val) return;
@@ -184,7 +185,6 @@
   });
 
   function judgeChar(typed) {
-    if (!gameActive) return;
     if (!startTime) {
       startTime = Date.now();
       timerInterval = setInterval(() => {
