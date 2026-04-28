@@ -16,11 +16,13 @@
     .status-bar { display: flex; gap: 32px; justify-content: center; margin-bottom: 24px; }
     .stat .val { font-size: 2.2rem; font-weight: bold; color: #7c6af7; text-align: center; }
     .stat .lbl { font-size: 0.75rem; color: #888; text-align: center; margin-top: 2px; }
-    .text-display { background: #0f0f1a; border-radius: 12px; padding: 28px 32px; font-size: 1.45rem; line-height: 2.8; letter-spacing: 0.12em; margin-bottom: 20px; min-height: 110px; word-break: break-all; }
+    .text-display { background: #0f0f1a; border-radius: 12px; padding: 28px 32px; font-size: 1.45rem; line-height: 3.2; letter-spacing: 0.12em; margin-bottom: 20px; min-height: 110px; word-break: break-all; }
     .char-done    { color: #4caf50; }
     .char-current { color: #fff; background: #7c6af7; border-radius: 3px; padding: 0 1px; }
     .char-pending { color: #b0b0cc; }
     .waiting      { color: #555; font-size: 1rem; letter-spacing: 0; }
+    ruby { ruby-align: center; }
+    rt { font-size: 0.5rem; color: #888; }
     #typingInput { width: 100%; padding: 14px 18px; background: #0f0f1a; border: 2px solid #333; border-radius: 12px; color: #e0e0ff; font-size: 1.1rem; outline: none; transition: border-color 0.2s; }
     #typingInput:focus { border-color: #7c6af7; }
     #typingInput.error { border-color: #ff4444; background: #1a0f0f; animation: shake 0.15s; }
@@ -93,6 +95,7 @@
 
 <script>
   let targetText = '';
+  let targetRuby = '';
   let currentIndex = 0;
   let startTime = null;
   let timerInterval = null;
@@ -138,6 +141,7 @@
     const res = await fetch('/api/text');
     const data = await res.json();
     targetText = data.text;
+    targetRuby = data.ruby || '';
     currentIndex = 0;
     startTime = null;
     gameActive = true;
@@ -231,9 +235,11 @@
     let html = '';
     for (let i = 0; i < targetText.length; i++) {
       const ch = escHtml(targetText[i]);
-      if (i < currentIndex)        html += `<span class="char-done">${ch}</span>`;
-      else if (i === currentIndex) html += `<span class="char-current">${ch}</span>`;
-      else                         html += `<span class="char-pending">${ch}</span>`;
+      const rb = targetRuby[i] ? `<rt>${escHtml(targetRuby[i])}</rt>` : '<rt></rt>';
+      const ruby = `<ruby>${ch}${rb}</ruby>`;
+      if (i < currentIndex)        html += `<span class="char-done">${ruby}</span>`;
+      else if (i === currentIndex) html += `<span class="char-current">${ruby}</span>`;
+      else                         html += `<span class="char-pending">${ruby}</span>`;
     }
     textDisplay.innerHTML = html;
   }
