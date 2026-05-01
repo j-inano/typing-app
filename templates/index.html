@@ -321,6 +321,7 @@ async function loadNextText() {
 // ---- キー入力 ----
 typingInput.addEventListener('keydown', (e) => {
   if (e.isComposing || e.keyCode === 229) return;
+  if (e.repeat) return;  // キーリピート（長押し）を無視
   if (!gameActive) return;
   if (e.key.length !== 1) return;
   e.preventDefault();
@@ -341,6 +342,18 @@ typingInput.addEventListener('keydown', (e) => {
 
   if (exact.length > 0) {
     // トークン確定
+    // 「n」単体でんを確定する場合、次の文字がn/a/i/u/e/o/yなら確定しない
+    if (newBuf === 'n' && tokenIndex + 1 < tokens.length) {
+      const nextCands = getCandidates(tokens[tokenIndex + 1]);
+      const nextFirst = nextCands[0] ? nextCands[0][0] : '';
+      if ('aiueony'.includes(nextFirst)) {
+        // n単体では確定せず、nn待ちにする
+        buf = newBuf;
+        candidates = candidates.filter(c => c.startsWith(newBuf));
+        renderRoman();
+        return;
+      }
+    }
     typingInput.classList.remove('error');
     tokenIndex++;
     buf = '';
