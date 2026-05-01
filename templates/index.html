@@ -25,7 +25,7 @@
     .roman-done    { color: #4caf50; }
     .roman-current { color: #fff; font-weight: bold; }
     .roman-pending { color: #444; }
-    #typingInput { width: 100%; padding: 14px 18px; background: #0f0f1a; border: 2px solid #333; border-radius: 12px; color: #e0e0ff; font-size: 1.1rem; outline: none; transition: border-color 0.2s; ime-mode: disabled; }
+    #typingInput { width: 100%; padding: 14px 18px; background: #0f0f1a; border: 2px solid #333; border-radius: 12px; color: #e0e0ff; font-size: 1.1rem; outline: none; transition: border-color 0.2s; }
     #typingInput:focus { border-color: #7c6af7; }
     #typingInput.error { border-color: #ff4444; background: #1a0f0f; animation: shake 0.15s; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
@@ -69,7 +69,7 @@
     <span class="waiting">名前を入力して「スタート」を押してください</span>
   </div>
   <div class="roman-display" id="romanDisplay"></div>
-  <input type="text" id="typingInput" placeholder="ローマ字で入力（IMEをオフにしてください）" disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" lang="en">
+  <input type="text" id="typingInput" placeholder="ローマ字で入力（IMEをオフ）" disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" lang="en">
   <div class="btn-row">
     <button class="btn btn-primary" id="startBtn" onclick="startGame()">スタート</button>
   </div>
@@ -97,290 +97,340 @@
 </div>
 
 <script>
-  // ---- ローマ字→ひらがな変換テーブル ----
-  // 長いものを先に並べる（優先マッチのため）
-  const ROMAN_TABLE = [
-    ['chi','ち'],['tchi','っち'],['cchi','っち'],
-    ['tsu','つ'],['ttsu','っつ'],
-    ['sha','しゃ'],['shi','し'],['shu','しゅ'],['she','しぇ'],['sho','しょ'],
-    ['tya','ちゃ'],['tyi','ちぃ'],['tyu','ちゅ'],['tye','ちぇ'],['tyo','ちょ'],
-    ['cha','ちゃ'],['chu','ちゅ'],['che','ちぇ'],['cho','ちょ'],
-    ['nya','にゃ'],['nyi','にぃ'],['nyu','にゅ'],['nye','にぇ'],['nyo','にょ'],
-    ['mya','みゃ'],['myi','みぃ'],['myu','みゅ'],['mye','みぇ'],['myo','みょ'],
-    ['rya','りゃ'],['ryi','りぃ'],['ryu','りゅ'],['rye','りぇ'],['ryo','りょ'],
-    ['hya','ひゃ'],['hyi','ひぃ'],['hyu','ひゅ'],['hye','ひぇ'],['hyo','ひょ'],
-    ['kya','きゃ'],['kyi','きぃ'],['kyu','きゅ'],['kye','きぇ'],['kyo','きょ'],
-    ['gya','ぎゃ'],['gyi','ぎぃ'],['gyu','ぎゅ'],['gye','ぎぇ'],['gyo','ぎょ'],
-    ['bya','びゃ'],['byi','びぃ'],['byu','びゅ'],['bye','びぇ'],['byo','びょ'],
-    ['pya','ぴゃ'],['pyi','ぴぃ'],['pyu','ぴゅ'],['pye','ぴぇ'],['pyo','ぴょ'],
-    ['dya','ぢゃ'],['dyu','ぢゅ'],['dyo','ぢょ'],
-    ['ja','じゃ'],['ji','じ'],['ju','じゅ'],['je','じぇ'],['jo','じょ'],
-    ['jya','じゃ'],['jyu','じゅ'],['jyo','じょ'],
-    ['fa','ふぁ'],['fi','ふぃ'],['fu','ふ'],['fe','ふぇ'],['fo','ふぉ'],
-    ['dha','でゃ'],['dhi','でぃ'],['dhu','でゅ'],['dhe','でぇ'],['dho','でょ'],
-    ['tha','てゃ'],['thi','てぃ'],['thu','てゅ'],['the','てぇ'],['tho','てょ'],
-    ['xtu','っ'],['xtsu','っ'],['ltu','っ'],['ltsu','っ'],
-    ['xa','ぁ'],['xi','ぃ'],['xu','ぅ'],['xe','ぇ'],['xo','ぉ'],
-    ['la','ぁ'],['li','ぃ'],['lu','ぅ'],['le','ぇ'],['lo','ぉ'],
-    ['xya','ゃ'],['xyu','ゅ'],['xyo','ょ'],
-    ['lya','ゃ'],['lyu','ゅ'],['lyo','ょ'],
-    ['wa','わ'],['wi','ゐ'],['we','ゑ'],['wo','を'],
-    ['nn','ん'],['n\'','ん'],
-    ['ka','か'],['ki','き'],['ku','く'],['ke','け'],['ko','こ'],
-    ['ga','が'],['gi','ぎ'],['gu','ぐ'],['ge','げ'],['go','ご'],
-    ['sa','さ'],['si','し'],['su','す'],['se','せ'],['so','そ'],
-    ['za','ざ'],['zi','じ'],['zu','ず'],['ze','ぜ'],['zo','ぞ'],
-    ['ta','た'],['ti','ち'],['tu','つ'],['te','て'],['to','と'],
-    ['da','だ'],['di','ぢ'],['du','づ'],['de','で'],['do','ど'],
-    ['na','な'],['ni','に'],['nu','ぬ'],['ne','ね'],['no','の'],
-    ['ha','は'],['hi','ひ'],['hu','ふ'],['he','へ'],['ho','ほ'],
-    ['ba','ば'],['bi','び'],['bu','ぶ'],['be','べ'],['bo','ぼ'],
-    ['pa','ぱ'],['pi','ぴ'],['pu','ぷ'],['pe','ぺ'],['po','ぽ'],
-    ['ma','ま'],['mi','み'],['mu','む'],['me','め'],['mo','も'],
-    ['ya','や'],['yu','ゆ'],['yo','よ'],
-    ['ra','ら'],['ri','り'],['ru','る'],['re','れ'],['ro','ろ'],
-    ['a','あ'],['i','い'],['u','う'],['e','え'],['o','お'],
-    ['n','ん'],
-    ['-','ー'],['~','〜'],
-    ['.','。'],[',','、'],['!','！'],['?','？'],
-    [' ','　'],
-  ];
+// ---- ひらがな1文字に対する入力可能ローマ字パターン ----
+const KANA_MAP = {
+  'a':'a','i':'i','u':'u','e':'e','o':'o',
+  'ka':'ka','ki':'ki','ku':'ku','ke':'ke','ko':'ko',
+  'ga':'ga','gi':'gi','gu':'gu','ge':'ge','go':'go',
+  'sa':'sa','si':['si','shi'],'su':'su','se':'se','so':'so',
+  'za':'za','zi':['zi','ji'],'zu':'zu','ze':'ze','zo':'zo',
+  'ta':'ta','ti':['ti','chi'],'tu':['tu','tsu'],'te':'te','to':'to',
+  'da':'da','di':'di','du':'du','de':'de','do':'do',
+  'na':'na','ni':'ni','nu':'nu','ne':'ne','no':'no',
+  'ha':'ha','hi':'hi','hu':['hu','fu'],'he':'he','ho':'ho',
+  'ba':'ba','bi':'bi','bu':'bu','be':'be','bo':'bo',
+  'pa':'pa','pi':'pi','pu':'pu','pe':'pe','po':'po',
+  'ma':'ma','mi':'mi','mu':'mu','me':'me','mo':'mo',
+  'ya':'ya','yu':'yu','yo':'yo',
+  'ra':'ra','ri':'ri','ru':'ru','re':'re','so':'so','ro':'ro',
+  'wa':'wa','wo':'wo',
+  'n':'nn',
+  'kya':'kya','kyu':'kyu','kyo':'kyo',
+  'sha':['sha','sya'],'shi':['shi','si'],'shu':['shu','syu'],'sho':['sho','syo'],
+  'chi':['chi','ti'],'cha':['cha','tya'],'chu':['chu','tyu'],'cho':['cho','tyo'],
+  'tsu':['tsu','tu'],
+  'nya':'nya','nyu':'nyu','nyo':'nyo',
+  'hya':'hya','hyu':'hyu','hyo':'hyo',
+  'mya':'mya','myu':'myu','myo':'myo',
+  'rya':'rya','ryu':'ryu','ryo':'ryo',
+  'gya':'gya','gyu':'gyu','gyo':'gyo',
+  'ja':['ja','zya','jya'],'ji':['ji','zi'],'ju':['ju','zyu','jyu'],'jo':['jo','zyo','jyo'],
+  'bya':'bya','byu':'byu','byo':'byo',
+  'pya':'pya','pyu':'pyu','pyo':'pyo',
+  'xtu':['xtu','ltu'],
+  '-':'-','~':'~',
+  '.':'.', ',':',','!':'!','?':'?',' ':' ',
+};
 
-  // ひらがな文字列をローマ字候補に変換（最短ローマ字）
-  function hiraganaToRoman(hira) {
-    let result = '';
-    let i = 0;
-    while (i < hira.length) {
-      let matched = false;
-      for (const [roman, kana] of ROMAN_TABLE) {
-        if (hira.startsWith(kana, i)) {
-          result += roman;
-          i += kana.length;
-          matched = true;
-          break;
-        }
+// ひらがな文字列をトークン（入力単位）に分解
+// 例: "きそじ" -> ["き","そ","じ"]
+// 例: "しゃ" -> ["しゃ"]
+// 例: "っき" -> ["っき"] (促音+次の文字をセットで)
+const COMPOUND = ['ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ'];
+
+function tokenize(ruby) {
+  const tokens = [];
+  let i = 0;
+  while (i < ruby.length) {
+    const ch = ruby[i];
+    // 促音（っ）は次の文字とセット
+    if (ch === 'っ' && i + 1 < ruby.length) {
+      const next = ruby[i+1];
+      // 次が拗音の場合はさらに1文字先も見る
+      if (i + 2 < ruby.length && COMPOUND.includes(ruby[i+2])) {
+        tokens.push({ type: 'soku', base: next + ruby[i+2] });
+        i += 3;
+      } else {
+        tokens.push({ type: 'soku', base: next });
+        i += 2;
       }
-      if (!matched) {
-        result += hira[i];
-        i++;
+    } else if (i + 1 < ruby.length && COMPOUND.includes(ruby[i+1])) {
+      // 拗音（きゃ等）
+      tokens.push({ type: 'kana', kana: ch + ruby[i+1] });
+      i += 2;
+    } else {
+      tokens.push({ type: 'kana', kana: ch });
+      i++;
+    }
+  }
+  return tokens;
+}
+
+// トークンに対する入力候補リストを返す
+function getCandidates(token) {
+  if (token.type === 'soku') {
+    // 促音: 次の文字の子音を重ねる or xtu/ltu
+    const baseCands = getRomanList(token.base);
+    const result = new Set(['xtu','ltu']);
+    for (const r of baseCands) {
+      if (r[0] && r[0] !== 'a' && r[0] !== 'i' && r[0] !== 'u' && r[0] !== 'e' && r[0] !== 'o') {
+        result.add(r[0] + r); // 子音重ね
       }
     }
-    return result;
+    return [...result];
+  }
+  return getRomanList(token.kana);
+}
+
+// ひらがな（1〜2文字）に対するローマ字候補リストを返す
+function getRomanList(kana) {
+  // カタカナはそのまま通す
+  if (!kana) return [kana];
+  // 句読点・記号
+  const punctMap = {'。':'.','、':',','！':'!','？':'?','ー':'-','　':' '};
+  if (punctMap[kana]) return [punctMap[kana]];
+  // ひらがな→ローマ字マッピングを逆引き
+  const results = [];
+  for (const [key, val] of Object.entries(KANA_MAP)) {
+    if (Array.isArray(val)) {
+      // valがローマ字リストの場合はkeyがひらがな
+    }
+  }
+  // 直接マッピング（ひらがな→ローマ字）
+  const HIRA_TO_ROMAN = {
+    'あ':['a'],'い':['i'],'う':['u'],'え':['e'],'お':['o'],
+    'か':['ka'],'き':['ki'],'く':['ku'],'け':['ke'],'こ':['ko'],
+    'が':['ga'],'ぎ':['gi'],'ぐ':['gu'],'げ':['ge'],'ご':['go'],
+    'さ':['sa'],'し':['si','shi'],'す':['su'],'せ':['se'],'そ':['so'],
+    'ざ':['za'],'じ':['zi','ji'],'ず':['zu'],'ぜ':['ze'],'ぞ':['zo'],
+    'た':['ta'],'ち':['ti','chi'],'つ':['tu','tsu'],'て':['te'],'と':['to'],
+    'だ':['da'],'ぢ':['di'],'づ':['du'],'で':['de'],'ど':['do'],
+    'な':['na'],'に':['ni'],'ぬ':['nu'],'ね':['ne'],'の':['no'],
+    'は':['ha'],'ひ':['hi'],'ふ':['hu','fu'],'へ':['he'],'ほ':['ho'],
+    'ば':['ba'],'び':['bi'],'ぶ':['bu'],'べ':['be'],'ぼ':['bo'],
+    'ぱ':['pa'],'ぴ':['pi'],'ぷ':['pu'],'ぺ':['pe'],'ぽ':['po'],
+    'ま':['ma'],'み':['mi'],'む':['mu'],'め':['me'],'も':['mo'],
+    'や':['ya'],'ゆ':['yu'],'よ':['yo'],
+    'ら':['ra'],'り':['ri'],'る':['ru'],'れ':['re'],'ろ':['ro'],
+    'わ':['wa'],'を':['wo'],'ん':['nn','n'],
+    'きゃ':['kya'],'きゅ':['kyu'],'きょ':['kyo'],
+    'しゃ':['sha','sya'],'しゅ':['shu','syu'],'しょ':['sho','syo'],
+    'ちゃ':['cha','tya'],'ちゅ':['chu','tyu'],'ちょ':['cho','tyo'],
+    'にゃ':['nya'],'にゅ':['nyu'],'にょ':['nyo'],
+    'ひゃ':['hya'],'ひゅ':['hyu'],'ひょ':['hyo'],
+    'みゃ':['mya'],'みゅ':['myu'],'みょ':['myo'],
+    'りゃ':['rya'],'りゅ':['ryu'],'りょ':['ryo'],
+    'ぎゃ':['gya'],'ぎゅ':['gyu'],'ぎょ':['gyo'],
+    'じゃ':['ja','zya','jya'],'じゅ':['ju','zyu','jyu'],'じょ':['jo','zyo','jyo'],
+    'びゃ':['bya'],'びゅ':['byu'],'びょ':['byo'],
+    'ぴゃ':['pya'],'ぴゅ':['pyu'],'ぴょ':['pyo'],
+    '。':['.'],'、':[','],'！':['!'],'？':['?'],'ー':['-'],'　':[' '],
+  };
+  return HIRA_TO_ROMAN[kana] || [kana];
+}
+
+// ---- ゲーム状態 ----
+let targetText = '';
+let targetRuby = '';
+let tokens = [];
+let tokenIndex = 0;
+let candidates = [];  // 現在トークンの入力候補
+let buf = '';         // 現在トークンへの入力バッファ
+let totalScore = 0;
+let startTime = null;
+let timerInterval = null;
+let gameActive = false;
+
+const textDisplay  = document.getElementById('textDisplay');
+const romanDisplay = document.getElementById('romanDisplay');
+const typingInput  = document.getElementById('typingInput');
+const scoreVal     = document.getElementById('scoreVal');
+const timerVal     = document.getElementById('timerVal');
+const startBtn     = document.getElementById('startBtn');
+const nameInput    = document.getElementById('nameInput');
+
+function initText(data) {
+  targetText = data.text;
+  targetRuby = data.ruby || data.text;
+  tokens = tokenize(targetRuby);
+  tokenIndex = 0;
+  buf = '';
+  candidates = getCandidates(tokens[0]);
+}
+
+// ---- ランキング ----
+async function loadRanking() {
+  const res = await fetch('/api/ranking');
+  const data = await res.json();
+  const medals = ['\u{1F947}','\u{1F948}','\u{1F949}','4','5'];
+  const tbody = document.getElementById('rankingBody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-rank">まだ記録がありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((s,i) => `
+    <tr>
+      <td><span class="rank-medal">${medals[i]}</span></td>
+      <td>${escHtml(s.username)}</td>
+      <td><span class="score-val">${s.score}</span> 文字</td>
+      <td>${s.elapsed.toFixed(1)} 秒</td>
+      <td>${s.created_at}</td>
+    </tr>
+  `).join('');
+}
+loadRanking();
+
+// ---- ゲーム開始 ----
+async function startGame() {
+  const name = nameInput.value.trim();
+  if (!name) {
+    nameInput.focus();
+    nameInput.style.borderColor = '#ff4444';
+    setTimeout(() => nameInput.style.borderColor = '', 1000);
+    return;
+  }
+  const res = await fetch('/api/text');
+  initText(await res.json());
+  totalScore = 0;
+  startTime = null;
+  gameActive = true;
+  scoreVal.textContent = '0';
+  timerVal.textContent = '0.0';
+  clearInterval(timerInterval);
+  renderText();
+  renderRoman();
+  typingInput.value = '';
+  typingInput.disabled = false;
+  typingInput.classList.remove('error');
+  typingInput.focus();
+  startBtn.textContent = 'リセット';
+}
+
+// ---- 次の文 ----
+async function loadNextText() {
+  totalScore += tokens.length;
+  scoreVal.textContent = totalScore;
+  const res = await fetch('/api/text');
+  initText(await res.json());
+  renderText();
+  renderRoman();
+  typingInput.value = '';
+  typingInput.focus();
+}
+
+// ---- キー入力 ----
+typingInput.addEventListener('keydown', (e) => {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (!gameActive) return;
+  if (e.key.length !== 1) return;
+  e.preventDefault();
+
+  if (!startTime) {
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+      timerVal.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+    }, 100);
   }
 
-  // ---- ゲーム状態 ----
-  let targetText = '';
-  let targetRuby = '';
-  let romanTarget = '';
-  let romanIndex = 0;
-  let hiraganaIndex = 0;
-  let totalScore = 0;    // 累計スコア（複数文にまたがる）
-  let startTime = null;
-  let timerInterval = null;
-  let gameActive = false;
+  const key = e.key.toLowerCase();
+  const newBuf = buf + key;
 
-  const textDisplay  = document.getElementById('textDisplay');
-  const romanDisplay = document.getElementById('romanDisplay');
-  const typingInput  = document.getElementById('typingInput');
-  const scoreVal     = document.getElementById('scoreVal');
-  const timerVal     = document.getElementById('timerVal');
-  const startBtn     = document.getElementById('startBtn');
-  const nameInput    = document.getElementById('nameInput');
+  // 候補と照合
+  const exact = candidates.filter(c => c === newBuf);
+  const partial = candidates.filter(c => c.startsWith(newBuf) && c !== newBuf);
 
-  // ---- ランキング ----
-  async function loadRanking() {
-    const res = await fetch('/api/ranking');
-    const data = await res.json();
-    const medals = ['\u{1F947}','\u{1F948}','\u{1F949}','4','5'];
-    const tbody = document.getElementById('rankingBody');
-    if (data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-rank">まだ記録がありません</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map((s,i) => `
-      <tr>
-        <td><span class="rank-medal">${medals[i]}</span></td>
-        <td>${escHtml(s.username)}</td>
-        <td><span class="score-val">${s.score}</span> 文字</td>
-        <td>${s.elapsed.toFixed(1)} 秒</td>
-        <td>${s.created_at}</td>
-      </tr>
-    `).join('');
-  }
-  loadRanking();
-
-  // ---- ゲーム開始 ----
-  async function startGame() {
-    const name = nameInput.value.trim();
-    if (!name) {
-      nameInput.focus();
-      nameInput.style.borderColor = '#ff4444';
-      setTimeout(() => nameInput.style.borderColor = '', 1000);
-      return;
-    }
-    const res = await fetch('/api/text');
-    const data = await res.json();
-    targetText = data.text;
-    targetRuby = data.ruby || data.text;
-    romanTarget = hiraganaToRoman(targetRuby);
-    romanIndex = 0;
-    hiraganaIndex = 0;
-    totalScore = 0;
-    startTime = null;
-    gameActive = true;
-    scoreVal.textContent = '0';
-    timerVal.textContent = '0.0';
-    clearInterval(timerInterval);
-    renderText();
-    renderRoman();
-    typingInput.value = '';
-    typingInput.disabled = false;
+  if (exact.length > 0) {
+    // トークン確定
     typingInput.classList.remove('error');
-    typingInput.focus();
-    startBtn.textContent = 'リセット';
-  }
-
-  // ローマ字インデックスから対応するひらがなインデックスを正確に計算
-  function romanToHiraganaIndex(rIdx) {
-    let ri = 0;
-    let hi = 0;
-    while (hi < targetRuby.length && ri < rIdx) {
-      let matched = false;
-      for (const [roman, kana] of ROMAN_TABLE) {
-        if (targetRuby.startsWith(kana, hi) && romanTarget.startsWith(roman, ri)) {
-          if (ri + roman.length <= rIdx) {
-            ri += roman.length;
-            hi += kana.length;
-            matched = true;
-            break;
-          } else {
-            // ローマ字の途中（例: 'k'だけ入力してまだ'a'待ち）
-            return hi;
-          }
-        }
-      }
-      if (!matched) break;
-    }
-    return hi;
-  }
-
-  // ---- 次の文を読み込む ----
-  async function loadNextText() {
-    totalScore += targetRuby.length;
-    scoreVal.textContent = totalScore;
-    const res = await fetch('/api/text');
-    const data = await res.json();
-    targetText = data.text;
-    targetRuby = data.ruby || data.text;
-    romanTarget = hiraganaToRoman(targetRuby);
-    romanIndex = 0;
-    hiraganaIndex = 0;
-    renderText();
-    renderRoman();
-    typingInput.value = '';
-    typingInput.focus();
-  }
-
-  typingInput.addEventListener('keydown', (e) => {
-    // IMEが介入しているキーは無視
-    if (e.isComposing || e.keyCode === 229) return;
-    if (!gameActive) return;
-    if (e.key.length !== 1) return; // 特殊キーは無視
-    e.preventDefault();
-
-    if (!startTime) {
-      startTime = Date.now();
-      timerInterval = setInterval(() => {
-        timerVal.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
-      }, 100);
-    }
-
-    const typed = e.key.toLowerCase();
-    const expected = romanTarget[romanIndex];
-
-    if (typed === expected) {
-      typingInput.classList.remove('error');
-      romanIndex++;
-
-      // ひらがなの進捗を正確に計算
-      hiraganaIndex = romanToHiraganaIndex(romanIndex);
-      scoreVal.textContent = hiraganaIndex;
+    tokenIndex++;
+    buf = '';
+    scoreVal.textContent = totalScore + tokenIndex;
+    if (tokenIndex >= tokens.length) {
+      loadNextText();
+    } else {
+      candidates = getCandidates(tokens[tokenIndex]);
       renderText();
       renderRoman();
-
-      if (romanIndex >= romanTarget.length) {
-        // 1文クリア → 次の文へ
-        loadNextText();
-      }
-    } else {
-      typingInput.classList.add('error');
-      setTimeout(() => endGame(false), 250);
     }
+  } else if (partial.length > 0) {
+    // 途中まで合っている
+    typingInput.classList.remove('error');
+    buf = newBuf;
+    candidates = partial;
+    renderRoman();
+  } else {
+    // ミス
+    typingInput.classList.add('error');
+    setTimeout(() => endGame(), 250);
+  }
+});
+
+typingInput.addEventListener('input', () => { typingInput.value = ''; });
+
+// ---- ゲーム終了 ----
+async function endGame() {
+  if (!gameActive) return;
+  gameActive = false;
+  clearInterval(timerInterval);
+  typingInput.disabled = true;
+  const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const score = totalScore + tokenIndex;
+  const username = nameInput.value.trim() || '名無し';
+  await fetch('/api/score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, score, elapsed })
   });
+  document.getElementById('resultTitle').textContent = '💥 ミス！';
+  document.getElementById('resultScore').textContent = score;
+  document.getElementById('resultSub').textContent = `${elapsed.toFixed(1)}秒経過`;
+  document.getElementById('resultOverlay').classList.add('active');
+  startBtn.textContent = 'スタート';
+  loadRanking();
+}
 
-  // inputイベントはすべて無効化（IME入力を防ぐ）
-  typingInput.addEventListener('input', (e) => {
-    typingInput.value = '';
-  });
+function closeResult() {
+  document.getElementById('resultOverlay').classList.remove('active');
+}
 
-  // ---- ゲーム終了 ----
-  async function endGame(cleared) {
-    if (!gameActive) return;
-    gameActive = false;
-    clearInterval(timerInterval);
-    typingInput.disabled = true;
-    const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
-    const score = totalScore + hiraganaIndex;
-    const username = nameInput.value.trim() || '名無し';
-    await fetch('/api/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, score, elapsed })
-    });
-    document.getElementById('resultTitle').textContent = cleared ? '🎉 クリア！' : '💥 ミス！';
-    document.getElementById('resultScore').textContent = score;
-    document.getElementById('resultSub').textContent = cleared
-      ? `全文入力完了！ ${elapsed.toFixed(1)}秒`
-      : `${elapsed.toFixed(1)}秒経過`;
-    document.getElementById('resultOverlay').classList.add('active');
-    startBtn.textContent = 'スタート';
-    loadRanking();
+// ---- テキスト描画 ----
+function renderText() {
+  const progress = tokenIndex / (tokens.length || 1);
+  const doneChars = Math.floor(targetText.length * progress);
+  let html = '';
+  for (let i = 0; i < targetText.length; i++) {
+    const ch = escHtml(targetText[i]);
+    if (i < doneChars)        html += `<span class="char-done">${ch}</span>`;
+    else if (i === doneChars) html += `<span class="char-current">${ch}</span>`;
+    else                      html += `<span class="char-pending">${ch}</span>`;
   }
+  textDisplay.innerHTML = html;
+}
 
-  function closeResult() {
-    document.getElementById('resultOverlay').classList.remove('active');
+// ---- ローマ字進捗描画 ----
+function renderRoman() {
+  // 完了済みトークンのローマ字（最初の候補を使用）
+  let doneStr = '';
+  for (let i = 0; i < tokenIndex; i++) {
+    doneStr += getCandidates(tokens[i])[0];
   }
+  // 現在トークン: 入力済み部分 + 残り
+  const currentDone = buf;
+  const currentRest = candidates[0] ? candidates[0].slice(buf.length) : '';
+  // 残りトークン
+  let pendingStr = '';
+  for (let i = tokenIndex + 1; i < tokens.length; i++) {
+    pendingStr += getCandidates(tokens[i])[0];
+  }
+  romanDisplay.innerHTML =
+    `<span class="roman-done">${escHtml(doneStr + currentDone)}</span>` +
+    `<span class="roman-current">${escHtml(currentRest[0] || '')}</span>` +
+    `<span class="roman-pending">${escHtml(currentRest.slice(1) + pendingStr)}</span>`;
+}
 
-  // ---- テキスト描画 ----
-  function renderText() {
-    // ひらがなインデックスからテキスト上の位置を計算
-    // targetRubyとtargetTextは文字数が異なるので進捗率で対応
-    const hiProgress = hiraganaIndex / (targetRuby.length || 1);
-    const doneChars = Math.floor(targetText.length * hiProgress);
-    let html = '';
-    for (let i = 0; i < targetText.length; i++) {
-      const ch = escHtml(targetText[i]);
-      if (i < doneChars)        html += `<span class="char-done">${ch}</span>`;
-      else if (i === doneChars) html += `<span class="char-current">${ch}</span>`;
-      else                      html += `<span class="char-pending">${ch}</span>`;
-    }
-    textDisplay.innerHTML = html;
-  }
-
-  // ---- ローマ字進捗描画 ----
-  function renderRoman() {
-    const done    = escHtml(romanTarget.slice(0, romanIndex));
-    const current = escHtml(romanTarget[romanIndex] || '');
-    const pending = escHtml(romanTarget.slice(romanIndex + 1));
-    romanDisplay.innerHTML =
-      `<span class="roman-done">${done}</span>` +
-      `<span class="roman-current">${current}</span>` +
-      `<span class="roman-pending">${pending}</span>`;
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 </script>
 </body>
 </html>
