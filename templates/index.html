@@ -185,19 +185,14 @@ function getCandidates(token) {
 
 // ひらがな（1〜2文字）に対するローマ字候補リストを返す
 function getRomanList(kana) {
-  // カタカナはそのまま通す
   if (!kana) return [kana];
+  // カタカナをひらがなに変換
+  const hira = kana.replace(/[\u30A1-\u30F6]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) - 0x60));
   // 句読点・記号
   const punctMap = {'。':'.','、':',','！':'!','？':'?','ー':'-','　':' '};
-  if (punctMap[kana]) return [punctMap[kana]];
-  // ひらがな→ローマ字マッピングを逆引き
-  const results = [];
-  for (const [key, val] of Object.entries(KANA_MAP)) {
-    if (Array.isArray(val)) {
-      // valがローマ字リストの場合はkeyがひらがな
-    }
-  }
-  // 直接マッピング（ひらがな→ローマ字）
+  if (punctMap[hira]) return [punctMap[hira]];
+  // ひらがな→ローマ字マッピング
   const HIRA_TO_ROMAN = {
     'あ':['a'],'い':['i'],'う':['u'],'え':['e'],'お':['o'],
     'か':['ka'],'き':['ki'],'く':['ku'],'け':['ke'],'こ':['ko'],
@@ -225,7 +220,8 @@ function getRomanList(kana) {
     'じゃ':['ja','zya','jya'],'じゅ':['ju','zyu','jyu'],'じょ':['jo','zyo','jyo'],
     'びゃ':['bya'],'びゅ':['byu'],'びょ':['byo'],
     'ぴゃ':['pya'],'ぴゅ':['pyu'],'ぴょ':['pyo'],
-    '。':['.'],'、':[','],'！':['!'],'？':['?'],'ー':['-'],'　':[' '],
+  };
+  return HIRA_TO_ROMAN[hira] || [hira];
   };
   return HIRA_TO_ROMAN[kana] || [kana];
 }
@@ -409,10 +405,7 @@ function closeResult() {
 
 // ---- テキスト描画 ----
 function renderText() {
-  // 上段: 漢字テキストを薄く参考表示
-  const kanjiHtml = `<div class="kanji-ref">${escHtml(targetText)}</div>`;
-
-  // 下段: ひらがなをトークン単位で色分け
+  // 上段: ひらがなをトークン単位で色分け（メイン）
   let rubyPos = 0;
   const tokenPositions = tokens.map(t => {
     const start = rubyPos;
@@ -436,28 +429,35 @@ function renderText() {
       rubyHtml += `<span class="char-pending">${ch}</span>`;
     }
   }
-  textDisplay.innerHTML = kanjiHtml + rubyHtml;
+
+  // 下段: 漢字テキストを薄く参考表示
+  const kanjiHtml = `<div class="kanji-ref">${escHtml(targetText)}</div>`;
+
+  textDisplay.innerHTML = rubyHtml + kanjiHtml;
 }
 
-// ---- ローマ字進捗描画 ----
+// ---- ローマ字進捗描画（前後20文字だけ表示） ----
 function renderRoman() {
-  // 完了済みトークンのローマ字（最初の候補を使用）
   let doneStr = '';
   for (let i = 0; i < tokenIndex; i++) {
     doneStr += getCandidates(tokens[i])[0];
   }
-  // 現在トークン: 入力済み部分 + 残り
   const currentDone = buf;
   const currentRest = candidates[0] ? candidates[0].slice(buf.length) : '';
-  // 残りトークン
   let pendingStr = '';
   for (let i = tokenIndex + 1; i < tokens.length; i++) {
     pendingStr += getCandidates(tokens[i])[0];
   }
+
+  // 前後20文字に絞る
+  const fullDone = doneStr + currentDone;
+  const trimDone = fullDone.slice(-20);
+  const trimPending = (currentRest.slice(1) + pendingStr).slice(0, 20);
+
   romanDisplay.innerHTML =
-    `<span class="roman-done">${escHtml(doneStr + currentDone)}</span>` +
+    `<span class="roman-done">${escHtml(trimDone)}</span>` +
     `<span class="roman-current">${escHtml(currentRest[0] || '')}</span>` +
-    `<span class="roman-pending">${escHtml(currentRest.slice(1) + pendingStr)}</span>`;
+    `<span class="roman-pending">${escHtml(trimPending)}</span>`;
 }
 
 function escHtml(s) {
