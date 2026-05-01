@@ -167,18 +167,18 @@ function tokenize(ruby) {
   return tokens;
 }
 
-// トークンに対する入力候補リストを返す
+// トークンに対する入力候補リストを返す（子音重ねを先頭に）
 function getCandidates(token) {
   if (token.type === 'soku') {
-    // 促音: 次の文字の子音を重ねる or xtu/ltu
     const baseCands = getRomanList(token.base);
-    const result = new Set(['xtu','ltu']);
+    const consonants = [];
+    const extras = ['xtu','ltu'];
     for (const r of baseCands) {
-      if (r[0] && r[0] !== 'a' && r[0] !== 'i' && r[0] !== 'u' && r[0] !== 'e' && r[0] !== 'o') {
-        result.add(r[0] + r); // 子音重ね
+      if (r[0] && !'aiueo'.includes(r[0])) {
+        consonants.push(r[0] + r); // 子音重ね（ppou等）を先頭に
       }
     }
-    return [...result];
+    return [...consonants, ...extras];
   }
   return getRomanList(token.kana);
 }
