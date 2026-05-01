@@ -116,7 +116,13 @@ def index():
 @app.route('/api/text')
 def api_text():
     t = random.choice(TEXTS)
-    return jsonify({'text': t['text'], 'ruby': t['ruby']})
+    text = t['text']
+    ruby = t['ruby']
+    # テキストとふりがなを1文字ずつ対応した配列に変換
+    # ふりがなの文字数がテキストと異なる場合はそのまま返す
+    chars = list(text)
+    rubys = list(ruby)
+    return jsonify({'text': text, 'ruby': ruby, 'chars': chars, 'rubys': rubys})
 
 @app.route('/api/score', methods=['POST'])
 def api_score():

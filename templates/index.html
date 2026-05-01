@@ -96,6 +96,8 @@
 <script>
   let targetText = '';
   let targetRuby = '';
+  let targetChars = [];  // 表示用文字配列
+  let targetRubys = [];  // 判定用ひらがな配列
   let currentIndex = 0;
   let startTime = null;
   let timerInterval = null;
@@ -142,6 +144,8 @@
     const data = await res.json();
     targetText = data.text;
     targetRuby = data.ruby || '';
+    targetChars = data.chars || [...data.text];
+    targetRubys = data.rubys || [...(data.ruby || data.text)];
     currentIndex = 0;
     startTime = null;
     gameActive = true;
@@ -196,14 +200,13 @@
         timerVal.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
       }, 100);
     }
-    // 判定対象: ふりがながあればふりがな、なければ元の文字
-    const expected = targetRuby[currentIndex] || targetText[currentIndex];
+    const expected = targetRuby[currentIndex];
     if (typed === expected) {
       typingInput.classList.remove('error');
       currentIndex++;
       scoreVal.textContent = currentIndex;
       renderText();
-      if (currentIndex >= (targetRuby.length || targetText.length)) endGame(true);
+      if (currentIndex >= targetRuby.length) endGame(true);
     } else {
       typingInput.classList.add('error');
       setTimeout(() => endGame(false), 250);
@@ -238,15 +241,33 @@
   }
 
   function renderText() {
+    // ふりがな全体を上に表示し、漢字テキストはそのまま下に表示
+    // 進捗はtargetRuby（ひらがな）のインデックスで管理
+    // 漢字テキストは参考表示のみ
+    const rubyTotal = targetRuby.length;
+    const progress = currentIndex / rubyTotal;
+    const doneChars = Math.floor(targetText.length * progress);
+
     let html = '';
     for (let i = 0; i < targetText.length; i++) {
       const ch = escHtml(targetText[i]);
-      const rb = targetRuby[i] ? `<rt>${escHtml(targetRuby[i])}</rt>` : '<rt></rt>';
-      const ruby = `<ruby>${ch}${rb}</ruby>`;
-      if (i < currentIndex)        html += `<span class="char-done">${ruby}</span>`;
-      else if (i === currentIndex) html += `<span class="char-current">${ruby}</span>`;
-      else                         html += `<span class="char-pending">${ruby}</span>`;
+      if (i < doneChars) {
+        html += `<span class="char-done">${ch}</span>`;
+      } else if (i === doneChars) {
+        html += `<span class="char-current">${ch}</span>`;
+      } else {
+        html += `<span class="char-pending">${ch}</span>`;
+      }
     }
+    // ふりがな進捗バーを別途表示
+    const rubyDone = escHtml(targetRuby.slice(0, currentIndex));
+    const rubyCurrent = escHtml(targetRuby[currentIndex] || '');
+    const rubyPending = escHtml(targetRuby.slice(currentIndex + 1));
+    html += `<div style="font-size:0.85rem; margin-top:12px; letter-spacing:0.08em; color:#888;">`;
+    html += `<span style="color:#4caf50">${rubyDone}</span>`;
+    html += `<span style="color:#fff; background:#7c6af7; border-radius:3px; padding:0 1px">${rubyCurrent}</span>`;
+    html += `<span>${rubyPending}</span>`;
+    html += `</div>`;
     textDisplay.innerHTML = html;
   }
 
