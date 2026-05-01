@@ -160,6 +160,7 @@
 
   typingInput.addEventListener('compositionstart', () => {
     isComposing = true;
+    typingInput.value = '';
   });
 
   typingInput.addEventListener('compositionend', (e) => {
@@ -174,7 +175,10 @@
   });
 
   typingInput.addEventListener('input', (e) => {
-    if (isComposing || e.isComposing) return; // IME変換中・直後は無視
+    // IME変換中は完全無視（compositionendで処理する）
+    if (isComposing || e.isComposing) {
+      return;
+    }
     if (!gameActive) { typingInput.value = ''; return; }
     const val = typingInput.value;
     if (!val) return;
