@@ -66,7 +66,7 @@
   <div class="text-display" id="textDisplay">
     <span class="waiting">名前を入力して「スタート」を押してください</span>
   </div>
-  <input type="text" id="typingInput" placeholder="ここに入力..." disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <input type="text" id="typingInput" placeholder="ふりがなで入力..." disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
   <div class="btn-row">
     <button class="btn btn-primary" id="startBtn" onclick="startGame()">スタート</button>
   </div>
@@ -196,12 +196,14 @@
         timerVal.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
       }, 100);
     }
-    if (typed === targetText[currentIndex]) {
+    // 判定対象: ふりがながあればふりがな、なければ元の文字
+    const expected = targetRuby[currentIndex] || targetText[currentIndex];
+    if (typed === expected) {
       typingInput.classList.remove('error');
       currentIndex++;
       scoreVal.textContent = currentIndex;
       renderText();
-      if (currentIndex >= targetText.length) endGame(true);
+      if (currentIndex >= (targetRuby.length || targetText.length)) endGame(true);
     } else {
       typingInput.classList.add('error');
       setTimeout(() => endGame(false), 250);
