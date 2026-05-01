@@ -16,7 +16,8 @@
     .status-bar { display: flex; gap: 32px; justify-content: center; margin-bottom: 24px; }
     .stat .val { font-size: 2.2rem; font-weight: bold; color: #7c6af7; text-align: center; }
     .stat .lbl { font-size: 0.75rem; color: #888; text-align: center; margin-top: 2px; }
-    .text-display { background: #0f0f1a; border-radius: 12px; padding: 28px 32px; font-size: 1.45rem; line-height: 2.6; letter-spacing: 0.1em; margin-bottom: 12px; min-height: 110px; word-break: break-all; }
+    .text-display { background: #0f0f1a; border-radius: 12px; padding: 20px 32px 24px; font-size: 1.45rem; line-height: 2.6; letter-spacing: 0.1em; margin-bottom: 12px; min-height: 110px; word-break: break-all; }
+    .kanji-ref { font-size: 0.85rem; color: #555; letter-spacing: 0.08em; margin-bottom: 10px; line-height: 1.8; word-break: break-all; }
     .char-done    { color: #4caf50; }
     .char-current { color: #fff; background: #7c6af7; border-radius: 3px; padding: 0 2px; }
     .char-pending { color: #b0b0cc; }
@@ -408,33 +409,34 @@ function closeResult() {
 
 // ---- テキスト描画 ----
 function renderText() {
-  // ひらがな（targetRuby）をそのまま表示し、トークン単位で色分け
-  // トークンのひらがな位置を計算
+  // 上段: 漢字テキストを薄く参考表示
+  const kanjiHtml = `<div class="kanji-ref">${escHtml(targetText)}</div>`;
+
+  // 下段: ひらがなをトークン単位で色分け
   let rubyPos = 0;
   const tokenPositions = tokens.map(t => {
     const start = rubyPos;
     if (t.type === 'soku') {
-      rubyPos += 1 + t.base.length; // っ + base
+      rubyPos += 1 + t.base.length;
     } else {
       rubyPos += t.kana.length;
     }
     return { start, end: rubyPos };
   });
 
-  let html = '';
+  let rubyHtml = '';
   for (let i = 0; i < targetRuby.length; i++) {
     const ch = escHtml(targetRuby[i]);
-    // このひらがな文字がどのトークンに属するか
     const tIdx = tokenPositions.findIndex(p => i >= p.start && i < p.end);
     if (tIdx < tokenIndex) {
-      html += `<span class="char-done">${ch}</span>`;
+      rubyHtml += `<span class="char-done">${ch}</span>`;
     } else if (tIdx === tokenIndex) {
-      html += `<span class="char-current">${ch}</span>`;
+      rubyHtml += `<span class="char-current">${ch}</span>`;
     } else {
-      html += `<span class="char-pending">${ch}</span>`;
+      rubyHtml += `<span class="char-pending">${ch}</span>`;
     }
   }
-  textDisplay.innerHTML = html;
+  textDisplay.innerHTML = kanjiHtml + rubyHtml;
 }
 
 // ---- ローマ字進捗描画 ----
