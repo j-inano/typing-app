@@ -408,14 +408,31 @@ function closeResult() {
 
 // ---- テキスト描画 ----
 function renderText() {
-  const progress = tokenIndex / (tokens.length || 1);
-  const doneChars = Math.floor(targetText.length * progress);
+  // ひらがな（targetRuby）をそのまま表示し、トークン単位で色分け
+  // トークンのひらがな位置を計算
+  let rubyPos = 0;
+  const tokenPositions = tokens.map(t => {
+    const start = rubyPos;
+    if (t.type === 'soku') {
+      rubyPos += 1 + t.base.length; // っ + base
+    } else {
+      rubyPos += t.kana.length;
+    }
+    return { start, end: rubyPos };
+  });
+
   let html = '';
-  for (let i = 0; i < targetText.length; i++) {
-    const ch = escHtml(targetText[i]);
-    if (i < doneChars)        html += `<span class="char-done">${ch}</span>`;
-    else if (i === doneChars) html += `<span class="char-current">${ch}</span>`;
-    else                      html += `<span class="char-pending">${ch}</span>`;
+  for (let i = 0; i < targetRuby.length; i++) {
+    const ch = escHtml(targetRuby[i]);
+    // このひらがな文字がどのトークンに属するか
+    const tIdx = tokenPositions.findIndex(p => i >= p.start && i < p.end);
+    if (tIdx < tokenIndex) {
+      html += `<span class="char-done">${ch}</span>`;
+    } else if (tIdx === tokenIndex) {
+      html += `<span class="char-current">${ch}</span>`;
+    } else {
+      html += `<span class="char-pending">${ch}</span>`;
+    }
   }
   textDisplay.innerHTML = html;
 }
