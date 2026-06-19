@@ -317,10 +317,19 @@ async function loadNextText() {
 }
 
 // ---- キー入力 ----
+let justComposed = false;  // 日本語変換直後フラグ
+typingInput.addEventListener('compositionend', () => {
+  justComposed = true;
+  // 変換確定直後の短い間（200ms）はキー入力を無視する
+  setTimeout(() => { justComposed = false; }, 200);
+});
+
 typingInput.addEventListener('keydown', (e) => {
   if (e.isComposing || e.keyCode === 229) return;
+  if (justComposed) return;  // 変換確定直後のキー（スペース等）を無視
   if (e.repeat) return;  // キーリピート（長押し）を無視
   if (!gameActive) return;
+  if (e.key === ' ') return;  // スペースキーは無視
   if (e.key.length !== 1) return;
   e.preventDefault();
 
